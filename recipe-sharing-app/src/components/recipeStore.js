@@ -2,16 +2,19 @@
 import create from 'zustand';
 
 const useRecipeStore = create((set) => ({
-  recipes: [],
+  recipes: [
+    // seed example recipes so pages aren't empty
+    { id: '1', title: 'Pasta Carbonara', description: 'Creamy pasta with bacon.', ingredients: 'pasta, eggs, bacon', time: 20 },
+    { id: '2', title: 'Pancakes', description: 'Fluffy pancakes.', ingredients: 'flour, milk, eggs', time: 15 },
+  ],
+
+  addRecipe: (recipe) => set((state) => ({ recipes: [...state.recipes, recipe] })),
+  updateRecipe: (updated) => set((state) => ({ recipes: state.recipes.map((r) => (r.id === updated.id ? updated : r)) })),
+  deleteRecipe: (id) => set((state) => ({ recipes: state.recipes.filter((r) => r.id !== id) })),
+
+  // optional search/filter fields (keep compatibility with earlier code)
   searchTerm: '',
   filteredRecipes: [],
-
-  addRecipe: (recipe) =>
-    set((state) => ({
-      recipes: [...state.recipes, recipe],
-      filteredRecipes: [...state.recipes, recipe], // keep filtered in sync
-    })),
-
   setSearchTerm: (term) =>
     set((state) => {
       const filtered = state.recipes.filter((recipe) =>
@@ -19,13 +22,6 @@ const useRecipeStore = create((set) => ({
       );
       return { searchTerm: term, filteredRecipes: filtered };
     }),
-
-  filterRecipes: () =>
-    set((state) => ({
-      filteredRecipes: state.recipes.filter((recipe) =>
-        recipe.title.toLowerCase().includes(state.searchTerm.toLowerCase())
-      ),
-    })),
 }));
 
 export default useRecipeStore;
