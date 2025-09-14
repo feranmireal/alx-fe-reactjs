@@ -1,24 +1,23 @@
-// src/components/RecipeList.jsx
-import useRecipeStore from './recipeStore';
+import { Link } from 'react-router-dom';
+import { useRecipeStore } from './recipeStore';
+import AddRecipeForm from './AddRecipeForm';
 
-function RecipeList() {
+const RecipeList = () => {
   const recipes = useRecipeStore((state) => state.recipes);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Recipes</h2>
-      {recipes.length === 0 ? (
-        <p>No recipes yet. Add one!</p>
-      ) : (
-        recipes.map((recipe) => (
-          <div key={recipe.id} style={{ marginBottom: '10px' }}>
-            <h3>{recipe.title}</h3>
-            <p>{recipe.description}</p>
-          </div>
-        ))
-      )}
+    <div>
+      <h1>Recipes</h1>
+      <AddRecipeForm />
+      <ul>
+        {recipes.map((recipe) => (
+          <li key={recipe.id}>
+            <Link to={`/recipe/${recipe.id}`}>{recipe.title}</Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
-}
+};
 
 export default RecipeList;
