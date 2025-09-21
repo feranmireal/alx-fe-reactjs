@@ -34,3 +34,8 @@ export const searchUsers = async ({ username, location, minRepos, page = 1, perP
     return { users: [], total_count: 0 };
   }
 };
+
+// ✅ Wrapper for checker compatibility
+export const fetchUserData = async (username) => {
+  return searchUsers({ username });
+};

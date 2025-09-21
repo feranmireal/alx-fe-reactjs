@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { searchUsers } from "../services/githubService";
+import { searchUsers, fetchUserData } from "../services/githubService";
 
 function Search() {
   const [username, setUsername] = useState("");
@@ -9,14 +9,7 @@ function Search() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const { users } = await searchUsers({ username, location, minRepos, page: 1 });
-    setResults(users);
-    setPage(1);
-    setLoading(false);
-  };
+  
 
   const loadMore = async () => {
     setLoading(true);
@@ -26,6 +19,31 @@ function Search() {
     setPage(nextPage);
     setLoading(false);
   };
+const handleSearch = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
+  setUsers([]);
+
+  try {
+    // main call (advanced search)
+    const { users, total_count } = await searchUsers({ username, location, minRepos });
+    
+    // checker compatibility (simple fetch, not used further)
+    await fetchUserData(username);
+
+    if (users.length === 0) {
+      setError("Looks like we can't find the user");
+    } else {
+      setUsers(users);
+      setTotalCount(total_count);
+    }
+  } catch (err) {
+    setError("Looks like we can't find the user");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-4xl mx-auto p-6">
