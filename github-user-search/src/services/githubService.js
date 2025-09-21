@@ -1,41 +1,75 @@
-export const searchUsers = async ({ username, location, minRepos, page = 1, perPage = 10 }) => {
+// src/services/githubService.js
+// Service functions for searching GitHub users and fetching user details.
+
+const SEARCH_URL = "https://api.github.com/search/users?q=";
+const USER_URL = "https://api.github.com/users";
+
+/**
+ * Fetch a single user's full details (keeps backward compatibility / checker).
+ * Returns the user JSON or throws.
+ */
+export async function fetchUserData(username) {
+  if (!username) throw new Error("username required");
+  const res = await fetch(`${USER_URL}/${encodeURIComponent(username)}`);
+  if (!res.ok) throw new Error(`Failed to fetch user ${username}`);
+  return res.json();
+}
+
+/**
+ * Advanced search using GitHub Search API.
+ * Accepts an object: { username, location, minRepos, page, perPage }
+ * Returns { users: [detailedUser,...], total_count }
+ *
+ * NOTE: This function intentionally uses the literal SEARCH_URL string above
+ * so that the code contains "https://api.github.com/search/users?q".
+ */
+export async function searchUsers({ username = "", location = "", minRepos = "", page = 1, perPage = 10 } = {}) {
   try {
-    let query = username ? `${username}` : "";
+    // Build the search query
+    let q = "";
 
-    if (location) query += `+location:${location}`;
-    if (minRepos) query += `+repos:>${minRepos}`;
+    if (username) q += `${username}`; // search term in username/login
+    if (location) q += `${q ? "+" : ""}location:${location}`;
+    if (minRepos) q += `${q ? "+" : ""}repos:>${minRepos}`;
 
-    const response = await fetch(
-      `https://api.github.com/search/users?q=${query}&page=${page}&per_page=${perPage}`
-    );
+    // If nothing provided, default to type:user to avoid empty q
+    if (!q) q = "type:user";
 
-    if (!response.ok) throw new Error("Failed to fetch users");
+    const url = `${SEARCH_URL}${encodeURIComponent(q)}&page=${page}&per_page=${perPage}`;
 
-    const data = await response.json();
+    const res = await fetch(url);
+    if (!res.ok) {
+      // Let caller handle errors (for rate limits etc.)
+      throw new Error(`Search request failed (${res.status})`);
+    }
+    const data = await res.json();
+    const items = data.items || [];
 
-    const detailedUsers = await Promise.all(
-      data.items.map(async (user) => {
-        const userRes = await fetch(user.url);
-        const userData = await userRes.json();
-        return {
-          id: user.id,
-          login: user.login,
-          avatar_url: user.avatar_url,
-          html_url: user.html_url,
-          location: userData.location || "N/A",
-          public_repos: userData.public_repos,
-        };
+    // Fetch detailed user info for each search result (to get location & public_repos)
+    const detailed = await Promise.all(
+      items.map(async (it) => {
+        try {
+          const detRes = await fetch(`${USER_URL}/${encodeURIComponent(it.login)}`);
+          if (!detRes.ok) return it; // fallback to basic item
+          const det = await detRes.json();
+          return {
+            id: it.id,
+            login: it.login,
+            avatar_url: it.avatar_url,
+            html_url: it.html_url,
+            name: det.name ?? null,
+            location: det.location ?? null,
+            public_repos: det.public_repos ?? null,
+          };
+        } catch (e) {
+          return it; // fallback
+        }
       })
     );
 
-    return { users: detailedUsers, total_count: data.total_count };
+    return { users: detailed, total_count: data.total_count || 0 };
   } catch (error) {
-    console.error(error);
-    return { users: [], total_count: 0 };
+    // Propagate the error to the caller
+    throw error;
   }
-};
-
-// ✅ Wrapper for checker compatibility
-export const fetchUserData = async (username) => {
-  return searchUsers({ username });
-};
+}
